@@ -1,0 +1,9 @@
+Package: com.local.notesexporter
+Name: NotesExporter
+Version: 1.1.0
+Architecture: iphoneos-arm
+Description: Apple Notes exporter for TrollFools with selected-note batch export
+Maintainer: local
+Author: local
+Section: Tweaks
+Depends: firmware (>= 15.0)
