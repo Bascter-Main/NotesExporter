@@ -1,0 +1,43 @@
+name: Build NotesExporter iOS 17
+
+on:
+  push:
+    branches: [notes-exporter-ios17-build]
+    paths:
+      - 'NotesExporterTrollFools/**'
+      - '.github/workflows/notes-exporter-ios17.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Theos
+        run: |
+          brew install make ldid
+          git clone --recursive --depth 1 https://github.com/theos/theos.git "$HOME/theos"
+      - name: Build arm64 and arm64e dylib
+        working-directory: NotesExporterTrollFools
+        env:
+          THEOS: ${{ github.workspace }}/../theos
+        run: |
+          export THEOS="$HOME/theos"
+          make clean
+          make FINALPACKAGE=1
+          find . "$THEOS_OBJ_DIR" -name 'NotesExporter.dylib' -print 2>/dev/null || true
+          DYLIB=$(find . -name 'NotesExporter.dylib' -type f | head -1)
+          if [ -z "$DYLIB" ]; then
+            DYLIB=$(find "$HOME" -path '*NotesExporter*' -name 'NotesExporter.dylib' -type f | head -1)
+          fi
+          test -n "$DYLIB"
+          mkdir -p "$GITHUB_WORKSPACE/artifact"
+          cp "$DYLIB" "$GITHUB_WORKSPACE/artifact/NotesExporter.dylib"
+          file "$GITHUB_WORKSPACE/artifact/NotesExporter.dylib"
+          lipo -info "$GITHUB_WORKSPACE/artifact/NotesExporter.dylib" || true
+      - name: Upload TrollFools dylib
+        uses: actions/upload-artifact@v4
+        with:
+          name: NotesExporter-TrollFools-iOS17
+          path: artifact/NotesExporter.dylib
+          if-no-files-found: error
