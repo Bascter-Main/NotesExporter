@@ -2,42 +2,54 @@ name: Build NotesExporter iOS 17
 
 on:
   push:
-    branches: [notes-exporter-ios17-build]
-    paths:
-      - 'NotesExporterTrollFools/**'
-      - '.github/workflows/notes-exporter-ios17.yml'
+    branches: [main]
+    paths-ignore:
+      - 'build-output/**'
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
       - name: Install Theos
         run: |
           brew install make ldid
           git clone --recursive --depth 1 https://github.com/theos/theos.git "$HOME/theos"
-      - name: Build arm64 and arm64e dylib
+      - name: Build and verify universal dylib
         working-directory: NotesExporterTrollFools
-        env:
-          THEOS: ${{ github.workspace }}/../theos
         run: |
           export THEOS="$HOME/theos"
           make clean
           make FINALPACKAGE=1
-          find . "$THEOS_OBJ_DIR" -name 'NotesExporter.dylib' -print 2>/dev/null || true
-          DYLIB=$(find . -name 'NotesExporter.dylib' -type f | head -1)
-          if [ -z "$DYLIB" ]; then
-            DYLIB=$(find "$HOME" -path '*NotesExporter*' -name 'NotesExporter.dylib' -type f | head -1)
+          echo 'Candidate dylibs:'
+          find . -type f -name 'NotesExporter.dylib' ! -path '*.dSYM/*' -print
+          DYLIB=".theos/obj/NotesExporter.dylib"
+          test -f "$DYLIB"
+          FILEINFO=$(file "$DYLIB")
+          echo "$FILEINFO"
+          echo "$FILEINFO" | grep -q 'dynamically linked shared library'
+          ARCHS=$(lipo -archs "$DYLIB")
+          echo "Architectures: $ARCHS"
+          echo "$ARCHS" | grep -qw arm64
+          echo "$ARCHS" | grep -qw arm64e
+          mkdir -p "$GITHUB_WORKSPACE/build-output"
+          cp "$DYLIB" "$GITHUB_WORKSPACE/build-output/NotesExporter.dylib"
+          shasum -a 256 "$GITHUB_WORKSPACE/build-output/NotesExporter.dylib" | tee "$GITHUB_WORKSPACE/build-output/NotesExporter.dylib.sha256"
+      - name: Commit verified dylib to build-output
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -f build-output/NotesExporter.dylib build-output/NotesExporter.dylib.sha256
+          if git diff --cached --quiet; then
+            echo 'No output changes to commit.'
+          else
+            git commit -m 'build: publish verified NotesExporter dylib [skip ci]'
+            git push origin HEAD:main
           fi
-          test -n "$DYLIB"
-          mkdir -p "$GITHUB_WORKSPACE/artifact"
-          cp "$DYLIB" "$GITHUB_WORKSPACE/artifact/NotesExporter.dylib"
-          file "$GITHUB_WORKSPACE/artifact/NotesExporter.dylib"
-          lipo -info "$GITHUB_WORKSPACE/artifact/NotesExporter.dylib" || true
-      - name: Upload TrollFools dylib
-        uses: actions/upload-artifact@v4
-        with:
-          name: NotesExporter-TrollFools-iOS17
-          path: artifact/NotesExporter.dylib
-          if-no-files-found: error
