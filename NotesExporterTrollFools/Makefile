@@ -6,7 +6,7 @@ include $(THEOS)/makefiles/common.mk
 TWEAK_NAME = NotesExporter
 NotesExporter_FILES = Tweak.m
 NotesExporter_CFLAGS = -fobjc-arc
-NotesExporter_FRAMEWORKS = UIKit Foundation
+NotesExporter_FRAMEWORKS = UIKit Foundation CoreData
 NotesExporter_LDFLAGS = -Wl,-undefined,dynamic_lookup
 
 include $(THEOS_MAKE_PATH)/tweak.mk
