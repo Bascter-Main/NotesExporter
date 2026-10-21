@@ -2,7 +2,9 @@ Package: com.local.notesexporter
 Name: NotesExporter
 Version: 1.1.0
 Architecture: iphoneos-arm
-Description: Apple Notes exporter for TrollFools with selected-note batch export
+Description: Export Apple Notes as JSON through TrollFools
+ Supports single-note and selected-note batch export with the system share sheet.
+ Primarily developed and tested on iOS 17.0; minimum deployment target is iOS 15.0.
 Maintainer: local
 Author: local
 Section: Tweaks
